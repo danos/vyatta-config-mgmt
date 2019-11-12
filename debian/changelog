@@ -1,0 +1,5 @@
+vyatta-config-mgmt (0.57.2) unstable; urgency=medium
+
+  * DANOS Import
+
+ -- Vyatta Package Maintainers <DL-vyatta-help@att.com>  Tue, 12 Nov 2019 10:59:10 +0000

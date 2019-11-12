@@ -1,0 +1,3 @@
+lib/Vyatta/*.pm opt/vyatta/share/perl5/Vyatta
+scripts/* opt/vyatta/sbin
+templates-op/show opt/vyatta/share/vyatta-op/templates

@@ -1,0 +1,64 @@
+Source: vyatta-config-mgmt
+Section: contrib/net
+Priority: optional
+Maintainer: Vyatta Package Maintainers <DL-vyatta-help@att.com>
+Build-Depends:
+ debhelper (>= 9),
+ dh-yang,
+ dh-python,
+ python3-all
+Standards-Version: 3.7.2
+X-Python3-Version: >= 3.2
+
+Package: vyatta-config-mgmt
+Architecture: all
+Depends:
+ cli-shell-api,
+ config-utils,
+ libsort-versions-perl,
+ liburi-perl,
+ libvyatta-config-perl,
+ libvyatta-interface-perl,
+ libvyatta-misc-perl,
+ logrotate,
+ perl,
+ python3,
+ python3-lib-vyatta-config-mgmt,
+ vyatta-curl-wrapper (>= 0.6),
+ ${perl:Depends},
+ ${misc:Depends}
+Recommends: configd
+Description: Vyatta commands for config-mgmt
+ Vyatta configuration/operational templates and scripts for the
+ config management  system.
+
+Package: vyatta-system-mgmt-v1-yang
+Architecture: all
+Depends:
+ vyatta-cfg (>= 0.15.33),
+ vyatta-config-mgmt(= ${binary:Version}),
+ ${misc:Depends},
+ ${yang:Depends}
+Section: contrib/admin
+Priority: optional
+Description: vyatta-system-mgmt-v1 module
+ The YANG module for vyatta-system-mgmt-v1
+Conflicts: vyatta-config-mgmt (<< 0.50), vyatta-system-mgmt-yang
+Replaces: vyatta-config-mgmt (<< 0.50)
+
+Package: vyatta-system-mgmt-routing-instance-v1-yang
+Architecture: all
+Depends: vyatta-system-mgmt-v1-yang, ${misc:Depends}, ${yang:Depends}
+Section: contrib/admin
+Priority: optional
+Description: vyatta-system-mgmt-routing-instance-v1 module
+ The YANG module for vyatta-system-mgmt-routing-instance-v1
+
+Package: python3-lib-vyatta-config-mgmt
+Section: contrib/python
+Architecture: any
+Depends: ${misc:Depends}, ${python3:Depends},
+Description: Python 3 library for handling GRUB config recovery menu
+ Python 3 library that parses the commit history file, presents it
+ to the user, and returns the user's chosen commit version.
+

@@ -1,0 +1,4 @@
+tmplscripts/system/config-management/commit-archive/configd_end.sh /opt/vyatta/share/tmplscripts/system/config-management/commit-archive/
+tmplscripts/system/config-management/commit-revisions/configd_delete.sh /opt/vyatta/share/tmplscripts/system/config-management/commit-revisions/
+tmplscripts/system/config-management/commit-revisions/configd_update.sh /opt/vyatta/share/tmplscripts/system/config-management/commit-revisions/
+yang/vyatta-system-mgmt-v1.yang /usr/share/configd/yang/

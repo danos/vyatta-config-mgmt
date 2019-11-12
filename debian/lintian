@@ -1,0 +1,3 @@
+vyatta-config-mgmt: file-in-unusual-dir
+vyatta-config-mgmt: dir-or-file-in-opt
+vyatta-config-mgmt: unusual-interpreter opt/vyatta/share/tmplscripts/*

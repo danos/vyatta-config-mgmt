@@ -1,0 +1,156 @@
+#!/bin/bash
+# Copyright (c) 2019, AT&T Intellectual Property. All rights reserved.
+#
+# Copyright (c) 2016-2017 by Brocade Communications Systems, Inc.
+# All rights reserved.
+#
+# SPDX-License-Identifier: GPL-2.0-only
+#
+# Description:	Standalone script to allow recovery of previous configurations.
+#		Note:  This script can ONLY be run as a standalone init program by grub.
+#
+
+# Vyatta config file and other relevant files
+CONFIG_FILE=/config/config.boot
+CONF_JOB_FILE=/config/confirm.job
+COMMITS_FILE=/config/archive/commits
+ARCHIVED_FILE_PREFIX=/config/archive/config.boot
+
+# Tools required by this script
+get_cfg_version=/opt/vyatta/sbin/get_cfg_version
+vyatta_commit_revs=/opt/vyatta/sbin/vyatta-commit-revs.pl
+
+# System is so messed up that doing anything would be a mistake
+dead() {
+    echo "$*"
+    echo
+    echo "This tool can only recover previous configurations."
+    echo "It is not a full system restore"
+    echo
+    echo -n "Hit return to reboot system: "
+    read -r
+    /sbin/reboot -f
+}
+
+display_message_and_reboot() {
+	timeout="$1"
+	if [ -z "$timeout" ]; then
+		timeout=5
+	fi
+    echo "Rebooting in $timeout seconds..."
+    sleep "$timeout"
+    echo
+    /sbin/reboot -f
+}
+
+# Run the scripts that init would do when doing standalone
+/etc/init.d/rcS
+
+echo "Standalone user configuration recovery tool."
+echo
+
+#
+# Check to see if we are running in standalone mode.
+# We'll know that we are if our pid is 1.
+#
+if [ "$$" != "1" ]; then
+    echo "This tool can only be run in standalone mode."
+    exit 1
+fi
+
+#
+# OK, now we know we are running in standalone mode.
+# Talk to the user.
+#
+echo "Starting process to recover the configuration ..."
+
+echo "Re-mounting root filesystem read/write..."
+mount -o remount,rw /
+
+# Possibly not a problem, but suggests something awry, and best not to make
+# it worse?
+if [ ! -f $CONFIG_FILE ]; then
+	dead "$CONFIG_FILE file not found.  Unable to restore configuration"
+fi
+
+if [ ! -f $COMMITS_FILE ]; then
+	dead "No previous configurations available!"
+fi
+
+#
+# If we are rebooting with an unconfirmed commit-confirm operation in
+# progress, then we need to let that finish its rollback first.
+#
+if [ -f $CONF_JOB_FILE ]; then
+	echo
+	echo "Rollback is currently in progress for unconfirmed commit-confirm."
+	echo "Please wait for this boot cycle to complete first."
+	echo
+	display_message_and_reboot 10
+fi
+
+#
+# Get required config version.
+#
+$get_cfg_version -f $COMMITS_FILE
+version=$?
+
+if [ $version -eq 0 ]; then
+	echo
+	echo "Continuing without changing configuration ..."
+	display_message_and_reboot 5
+fi
+
+echo
+echo "Restoring configuration version $version ..."
+echo
+
+#
+# Extract config from archived file and replace boot config
+#
+restore_file="$ARCHIVED_FILE_PREFIX.$version"
+if [ ! -f $restore_file.gz ]; then
+	echo
+	echo "Unable to locate archived config."
+	echo "Configuration will not be restored."
+	display_message_and_reboot 10
+fi
+
+#
+# Keep .gz file, and overwrite any existing extracted file (not that there
+# should be one).
+#
+gunzip -f -k $restore_file.gz
+if [ ! -f $restore_file ]; then
+	echo
+	echo "Unable to extract archived config."
+	echo "Configuration will not be restored."
+	display_message_and_reboot 10
+fi
+mv $restore_file $CONFIG_FILE
+
+#
+# Get timestamp of commit we are restoring to add to commit message and
+# convert to pretty-print format
+#
+let line=$version+1
+commit_ts=$(head -n $line $COMMITS_FILE | tail -n 1 | cut -d'|' -f2)
+pretty_ts=$(date --date="@$commit_ts" '+%Y-%m-%d %H:%M:%S')
+
+#
+# Call vyatta-commit-revs.pl with GRUB option.  This will copy the boot config
+# (/config/config.boot) into the archive directory and update the commits file
+# with the appropriate comment, using the ENV vars set below.
+#
+export COMMIT_COMMENT="Restored '$pretty_ts' commmit via GRUB menu"
+export COMMIT_USER="root"
+export COMMIT_STATUS=""
+export COMMIT_VIA="grub"
+
+$vyatta_commit_revs --grub
+
+sync
+
+echo "System will reboot in 10 seconds..."
+sleep 10
+/sbin/reboot -f

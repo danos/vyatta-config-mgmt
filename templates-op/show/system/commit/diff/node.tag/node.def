@@ -1,0 +1,18 @@
+help: config file changes at a given revision
+allowed: ${vyatta_sbindir}/vyatta-config-mgmt.pl --action=show-commit-log | cut -d" " -f 1
+run: commit_log_file=( /opt/vyatta/etc/config/archive/commits );
+     if [ -f ${commit_log_file} ];
+     then
+        if [[ $5 = *[[:digit:]]* ]]; 
+        then
+           next=$(($5+1))
+        else 
+           echo Invalid number $5
+           exit 1;
+        fi
+        ${vyatta_sbindir}/vyatta-config-mgmt.pl  \
+           --action=diff "$5" "$next"
+     else
+        echo Must be an admin user to run this command.
+     fi
+privileged: false
