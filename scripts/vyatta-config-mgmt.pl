@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 #
-# Copyright (c) 2019, AT&T Intellectual Property. All rights reserved.
+# Copyright (c) 2019-2020, AT&T Intellectual Property. All rights reserved.
 #
 # Copyright (c) 2014, 2017 Brocade Communications Systems, Inc.
 # All Rights Reserved.
@@ -26,16 +26,20 @@ use File::Copy;
 use URI;
 use IO::Prompt;
 use Sys::Syslog qw(:standard :macros);
+use JSON;
 
 my $commit_uri_script  = '/opt/vyatta/sbin/vyatta-commit-push.pl';
 my $commit_revs_script = '/opt/vyatta/sbin/vyatta-commit-revs.pl';
 
-my $commit_hook_dir  = cm_get_commit_hook_dir();
-my $archive_dir      = cm_get_archive_dir();
-my $config_file      = "$archive_dir/config.boot";
-my $lr_conf_file     = cm_get_lr_conf_file();
-my $config_dir       = cm_get_config_dir();
-my $confirm_job_file = "$config_dir/confirm.job";
+my $commit_hook_dir            = cm_get_commit_hook_dir();
+my $archive_dir                = cm_get_archive_dir();
+my $config_file                = "$archive_dir/config.boot";
+my $lr_conf_file               = cm_get_lr_conf_file();
+my $config_dir                 = cm_get_config_dir();
+my $confirm_job_file           = "$config_dir/confirm.job";
+my $confirmed_commit_job_file  = "$config_dir/confirmed_commit.job";
+my $confirmed_persist_job_file = "$config_dir/confirmed_persist.job";
+my $revert_file                = "$archive_dir/config.boot.revert.gz";
 
 my $debug = 0;
 
@@ -117,17 +121,24 @@ sub filter_version_string {
 #
 # main
 #
-my ( $action, $uri, $revs, $revnum, $minutes, $filename, $dest );
+my (
+    $action,  $uri,       $revs,    $revnum,   $minutes, $seconds,
+    $persist, $persistid, $session, $filename, $dest
+);
 
 Getopt::Long::Configure('pass_through');
 GetOptions(
-    "action=s"  => \$action,
-    "uri=s"     => \$uri,
-    "revs=s"    => \$revs,
-    "revnum=s"  => \$revnum,
-    "minutes=s" => \$minutes,
-    "file=s"    => \$filename,
-    "dest=s"    => \$dest,
+    "action=s"    => \$action,
+    "uri=s"       => \$uri,
+    "revs=s"      => \$revs,
+    "revnum=s"    => \$revnum,
+    "minutes=s"   => \$minutes,
+    "file=s"      => \$filename,
+    "dest=s"      => \$dest,
+    "seconds=s"   => \$seconds,
+    "persist=s"   => \$persist,
+    "persistid=s" => \$persistid,
+    "session=s"   => \$session,
 );
 
 die "Error: no action" if !defined $action;
@@ -397,12 +408,128 @@ if ( $action eq 'commit-confirm' ) {
     exit 0;
 }
 
-if ( $action eq 'confirm' ) {
-    if ( !-e $confirm_job_file ) {
-        print "No confirm pending\n";
+if ( $action eq 'revert-configuration' ) {
+    remove_confirm_job_file();
+    remove_confirmed_commit_job_file();
+
+    my $cmd = "/opt/vyatta/sbin/revert_confirmed_commit.sh";
+    my @lines =
+      `echo "/opt/vyatta/sbin/lu -user configd \\"$cmd\\"" | at now 2>&1`;
+    my ( $err, $job, $time ) = parse_at_output(@lines);
+    if ($err) {
+        print "Error: unable to schedule rollback\n";
+        exit 1;
+    }
+    exit 0;
+}
+
+if ( $action eq 'confirmed-commit' ) {
+    die "Error: no timeout" if ( !defined $seconds );
+    print "confirmed-commit [$seconds]\n" if $debug;
+    print "confirmed-commit [$seconds]\n";
+
+    # confirmed-commit silently confirms any previous pending commit-confirm
+    remove_confirm_job_file();
+    remove_confirmed_commit_job_file();
+
+    my $max_revs = cm_get_max_revs();
+    if ( !defined $max_revs or $max_revs <= 0 ) {
+        print "commit-revisions is not configured.\n\n";
+        exit 1;
+    }
+
+    check_integer($seconds);
+    print "confirmed commit will be reverted in $seconds"
+      . " seconds unless there is a confirming commit\n";
+
+    # Always rollback to immediately preceding config version.
+    $cmd = "/opt/vyatta/sbin/revert_confirmed_commit.sh";
+
+    # at only supports times on minute boundaries
+    # adjust timeout to ensure at least the required time is scheduled
+    # even if this means up to an extra 59 seconds is included
+    my $sleep_time = substr `date +'%S'`, 0, 2;
+    my $mins = $seconds + $sleep_time + 60;
+    $mins = int( $mins / 60 );
+
+    # Need to run with correct permissions.  This is the same as we use
+    # in configd.service to start configd, using 'lu'.
+    my @lines =
+`echo "/opt/vyatta/sbin/lu -user configd \\"$cmd\\"" | at now + $mins minutes 2>&1`;
+    my ( $err, $job, $time ) = parse_at_output(@lines);
+    if ($err) {
+        print "Error: unable to schedule rollback\n";
+        exit 1;
+    }
+
+    my %confirmedinfo;
+    $confirmedinfo{"job"}     = $job;
+    $confirmedinfo{"session"} = $session;
+    $confirmedinfo{"time"} = $time;
+    if ( defined $persist ) {
+        $confirmedinfo{"persist-id"} = $persist;
+    }
+    my $output = encode_json \%confirmedinfo;
+    system("echo '$output' > $confirmed_commit_job_file");
+
+    # if a revert file already exists, must be a follow-up
+    # confirmed-commit, leave in place to ensure config revert
+    # reverts back to initial confirmed commit
+    if ( !-e $revert_file ) {
+        system("cp $archive_dir/config.boot.1.gz $revert_file");
+    }
+    exit 0;
+}
+
+if ( $action eq 'show-confirmed-commit' ) {
+    my %results;
+    if ( !-e $confirmed_commit_job_file ) {
+        print "{}";
         exit 0;
     }
-    remove_confirm_job_file();
+    my $fl  = `cat $confirmed_commit_job_file`;
+    my %cmt = %{ decode_json($fl) };
+
+    $results{'session'}    = $cmt{'session'};
+    $results{'persist-id'} = $cmt{'persist-id'}
+      if ( defined $cmt{'persist-id'} );
+    print encode_json \%results;
+    exit 0;
+}
+
+if ( $action eq 'confirm' ) {
+    if ( defined $persistid and $persistid ne "" ) {
+        if ( !-e $confirmed_commit_job_file ) {
+            print "No confirmed commit pending\n";
+            exit 0;
+        }
+        my $fl  = `cat $confirmed_commit_job_file`;
+        my %cmt = %{ decode_json($fl) };
+        if ( !defined $cmt{"persist-id"} or $persistid ne $cmt{"persist-id"} ) {
+            print "persist-id does not match pending confirmed commit\n";
+            exit 0;
+        }
+        if ( -e $revert_file ) {
+            system("rm -f $revert_file");
+        }
+        remove_confirmed_commit_job_file();
+    }
+    else {
+        if ( !-e $confirm_job_file ) {
+            print "No confirm pending\n";
+            exit 0;
+        }
+
+        remove_confirm_job_file();
+    }
+    exit 0;
+}
+
+if ( $action eq 'confirming-commit' ) {
+    if ( -e $revert_file ) {
+        system("rm -f $revert_file");
+    }
+    remove_confirmed_commit_job_file();
     exit 0;
 }
 
@@ -426,6 +553,17 @@ sub remove_confirm_job_file {
     system("atrm $job 2> /dev/null");   # Silence 'deleting running job' warning
                                         # which we will get once sleep kicks in.
     system("rm -f $confirm_job_file");
+}
+
+sub remove_confirmed_commit_job_file {
+    if ( !-e $confirmed_commit_job_file ) {
+        return;
+    }
+    my $fl  = `cat $confirmed_commit_job_file`;
+    my %cmt = %{ decode_json($fl) };
+
+    system("atrm $cmt{'job'} 2> /dev/null");
+    system("rm -f $confirmed_commit_job_file");
 }
 
 if ( $action eq 'extract-archive' ) {
