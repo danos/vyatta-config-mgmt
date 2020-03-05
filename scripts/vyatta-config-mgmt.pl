@@ -27,6 +27,7 @@ use URI;
 use IO::Prompt;
 use Sys::Syslog qw(:standard :macros);
 use JSON;
+use Time::Piece;
 
 my $commit_uri_script  = '/opt/vyatta/sbin/vyatta-commit-push.pl';
 my $commit_revs_script = '/opt/vyatta/sbin/vyatta-commit-revs.pl';
@@ -462,10 +463,16 @@ if ( $action eq 'confirmed-commit' ) {
         exit 1;
     }
 
+    $time =~ s/at //;
+    my $in_fmt  = '%a %b %d %H:%M:%S %Y';
+    my $out_fmt = '%Y-%m-%d %H:%M:%S';
+    my $date    = Time::Piece->strptime( $time, $in_fmt );
+    $time = $date->strftime($out_fmt);
+
     my %confirmedinfo;
     $confirmedinfo{"job"}     = $job;
     $confirmedinfo{"session"} = $session;
-    $confirmedinfo{"time"} = $time;
+    $confirmedinfo{"time"}    = $time;
     if ( defined $persist ) {
         $confirmedinfo{"persist-id"} = $persist;
     }
@@ -484,16 +491,15 @@ if ( $action eq 'confirmed-commit' ) {
 if ( $action eq 'show-confirmed-commit' ) {
     my %results;
     if ( !-e $confirmed_commit_job_file ) {
-        print "{}";
+        print "No pending confirmed commit\n";
         exit 0;
     }
     my $fl  = `cat $confirmed_commit_job_file`;
     my %cmt = %{ decode_json($fl) };
 
-    $results{'session'}    = $cmt{'session'};
-    $results{'persist-id'} = $cmt{'persist-id'}
-      if ( defined $cmt{'persist-id'} );
-    print encode_json \%results;
+    print " Session    Revert Time           Persist-Id\n";
+    printf "%8s   %20s   %s\n",
+      $cmt{'session'}, $cmt{'time'}, $cmt{'persist-id'} // '';
     exit 0;
 }
 
