@@ -1,4 +1,4 @@
 #!/bin/vcli -f
 configure
-cfgcli cancel-commit comment "Reverted confirmed commit"
+cfgcli cancel-commit force comment "Reverted confirmed commit"
 end_configure
