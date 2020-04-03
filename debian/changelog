@@ -1,3 +1,12 @@
+vyatta-config-mgmt (0.57.3) unstable; urgency=medium
+
+  [ Paul Carson ]
+  * Support Netconf confirmed commit (Closes: VRVDR-32867)
+  * show confirmed-commit script changes (Fixes: VRVDR-49960)
+  * Use cancel-commit force to revert confirmed commit (Fixes: VRVDR-50028)
+
+ -- William Ivory <william.ivory@intl.att.com>  Fri, 03 Apr 2020 11:48:43 +0100
+
 vyatta-config-mgmt (0.57.2) unstable; urgency=medium
 
   * DANOS Import
