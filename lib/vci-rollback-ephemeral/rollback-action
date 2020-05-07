@@ -1,0 +1,4 @@
+#!/bin/vcli -f
+configure
+cfgcli rollback $1 comment "$2"
+end_configure

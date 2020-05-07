@@ -1,0 +1,9 @@
+[Vyatta Component]
+Name=net.vyatta.vci.ephemeral.vyatta.config.rollback
+Description=Ephemeral version of rollback VCI component
+Ephemeral=true
+ConfigFile=/etc/vyatta/rollback.json
+
+[Model net.vyatta.vci.ephemeral.vyatta.config.rollback.v1]
+Modules=vyatta-config-rollback-v1
+ModelSets=vyatta-v1

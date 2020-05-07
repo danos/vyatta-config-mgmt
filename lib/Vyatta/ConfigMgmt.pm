@@ -22,6 +22,7 @@ our @EXPORT = qw(cm_commit_add_log cm_commit_get_log cm_get_archive_dir
   cm_get_last_push_file cm_get_boot_config_file
   cm_get_config_rb cm_get_config_dir
   cm_get_commit_archive_uris
+  cm_get_commit_history
 );
 use base qw(Exporter);
 
@@ -135,6 +136,40 @@ sub cm_commit_add_log {
     }
     my $log = join( "\n", @lines );
     cm_write_file( $commit_log_file, $log );
+}
+
+sub cm_get_commit_history {
+    my @lines = cm_read_file($commit_log_file);
+
+    my @commit_log = ();
+    my $count      = 0;
+
+    my %history   = ();
+    my @revisions = ();
+    foreach my $line (@lines) {
+        if ( $line !~ /^\|(.*)\|$/ ) {
+
+            # ignore bad lines
+            $count++;
+            next;
+        }
+        my %entry = ();
+        $line = $1;
+        my ( $time, $user, $via, $comment ) = split( /\|/, $line );
+        $comment =~ s/\%\%/\|/g;
+        my $time_str = strftime( "%Y-%m-%dT%H:%M:%S%z", localtime($time) );
+        $time_str =~ s/(.*)(\d{2})/$1:$2/;
+        $entry{'comment'}     = $comment if defined $comment;
+        $entry{'timestamp'}   = $time_str;
+        $entry{'user-id'}     = $user;
+        $entry{'revision-id'} = $count;
+        $count++;
+        push @revisions, \%entry;
+    }
+
+    $history{'revision'} = \@revisions;
+
+    return %history;
 }
 
 sub cm_commit_get_log {

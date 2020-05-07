@@ -1,0 +1,12 @@
+# Copyright (c) 2020, AT&T Intellectual Property.
+# All rights reserved.
+#
+# SPDX-License-Identifier: LGPL-2.1-only
+#
+
+[Component]
+Name=net.vyatta.vci.ephemeral.vyatta.config.rollback
+
+[Model net.vyatta.vci.ephemeral.vyatta.config.rollback.v1]
+RPC/vyatta-config-rollback-v1/rollback=/lib/vci-rollback-ephemeral/vci-rollback --action=rollback
+RPC/vyatta-config-rollback-v1/get-commit-history=/lib/vci-rollback-ephemeral/vci-rollback --action=get-commit-history

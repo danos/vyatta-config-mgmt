@@ -5,6 +5,7 @@ Maintainer: Vyatta Package Maintainers <DL-vyatta-help@att.com>
 Build-Depends:
  debhelper (>= 9),
  dh-yang,
+ dh-vci,
  dh-python,
  python3-all
 Standards-Version: 3.7.2
@@ -53,6 +54,22 @@ Section: contrib/admin
 Priority: optional
 Description: vyatta-system-mgmt-routing-instance-v1 module
  The YANG module for vyatta-system-mgmt-routing-instance-v1
+
+Package: vyatta-config-rollback-v1-yang
+Architecture: all
+Depends: ${misc:Depends}, ${yang:Depends}
+Section: contrib/admin
+Priority: optional
+Description: vyatta-config-rollback-v1 module
+ The YANG module for vyatta-config-rollback-v1
+
+Package: vyatta-config-rollback-vci
+Architecture: all
+Depends: ephemerad, vyatta-config-rollback-v1-yang, ${misc:Depends}
+Section: contrib/admin
+Priority: optional
+Description: Configuration rollback VCI component
+ The ephemeral VCI component for config rollback
 
 Package: python3-lib-vyatta-config-mgmt
 Section: contrib/python

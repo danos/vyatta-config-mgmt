@@ -1,0 +1,108 @@
+module vyatta-config-rollback-v1 {
+	namespace "urn:vyatta.com:mgmt:vyatta-config-rollback:1";
+	prefix vyatta-config-rollback-v1;
+
+	import ietf-yang-types {
+		prefix ietf-types;
+	}
+
+	organization "AT&T Inc.";
+	contact
+		"AT&T
+		 Postal: 208 S. Akard Street
+		         Dallas, TX 75202
+		 Web: www.att.com";
+
+	description
+		"Copyright (c) 2020 AT&T Intellectual Property
+		 All rights reserved.
+
+		 Redistribution and use in source and binary forms, with or without
+		 modification, are permitted provided that the following conditions
+		 are met:
+
+		 1. Redistributions of source code must retain the above copyright
+		    notice, this list of conditions and the following disclaimer.
+		 2. Redistributions in binary form must reproduce the above
+		    copyright notice, this list of conditions and the following
+		    disclaimer in the documentation and/or other materials provided
+		    with the distribution.
+		 3. Neither the name of the copyright holder nor the names of its
+		    contributors may be used to endorse or promote products derived
+		    from this software without specific prior written permission.
+
+		 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+		 'AS IS' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+		 LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+		 FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+		 COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+		 INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+		 BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+		 LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+		 CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+		 LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
+		 ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+		 POSSIBILITY OF SUCH DAMAGE.
+
+		 SPDX-License-Identifier: BSD-3-Clause
+
+		 The YANG module defining RPC to permit rollback operation";
+
+	revision 2020-05-12 {
+		description "Initial revision.";
+	}
+
+	rpc rollback {
+		description "Rollback the configuration to a previously " +
+			"committed revision. revision-id '0' is the last " +
+			"commit that occurred and will match the current " +
+			"<running> data store. Details of the revisions " +
+			"are available using the <get-commit-history> RPC.";
+
+		input {
+			leaf revision-id {
+				description "Revision id of previous commit to rollback to.";
+				type uint32;
+				mandatory true;
+			}
+
+			leaf comment {
+				description "A comment to associate with the rollback.";
+				type string;
+			}
+		}
+	}
+
+	rpc get-commit-history {
+		description "Get details of the previous commits." +
+			"revision-id '0' is the most recent commit that " +
+			"has occurred and will match the current " +
+			"<running> datastore.";
+
+		output {
+			list revision {
+				key "revision-id";
+
+				leaf revision-id {
+					description "Revision identifier";
+					type uint32;
+				}
+
+				leaf comment {
+					description "Commit comment";
+					type string;
+				}
+
+				leaf timestamp {
+					description "Date and time the commit was applied";
+					type ietf-types:date-and-time;
+				}
+
+				leaf user-id {
+					description "User that applied the commit";
+					type string;
+				}
+			}
+		}
+	}
+}
