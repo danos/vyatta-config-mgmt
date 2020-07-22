@@ -1,3 +1,10 @@
+vyatta-config-mgmt (0.57.4) unstable; urgency=medium
+
+  [ Paul Carson ]
+  * Add Netconf rollback (Closes: VRVDR-50717)
+
+ -- William Ivory <william.ivory@intl.att.com>  Wed, 22 Jul 2020 11:49:59 +0100
+
 vyatta-config-mgmt (0.57.3) unstable; urgency=medium
 
   [ Paul Carson ]
