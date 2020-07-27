@@ -1,7 +1,7 @@
 #
 # Module: ConfigMgmt.pm
 #
-# Copyright (c) 2019, AT&T Intellectual Property.
+# Copyright (c) 2019-2020, AT&T Intellectual Property.
 # All rights reserved.
 #
 # Copyright (c) 2007-2017 by Brocade Communications Systems, Inc.
@@ -126,6 +126,9 @@ sub cm_commit_add_log {
     if ( $comment =~ /\|/ ) {
         $comment =~ s/\|/\%\%/g;
     }
+
+    $comment =~ s/\n/\\n/g;
+
     my $new_line = "|$time|$user|$via|$comment|";
     my @lines    = cm_read_file($commit_log_file);
 
