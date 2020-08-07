@@ -1,3 +1,9 @@
+vyatta-config-mgmt (0.57.4.1) unstable; urgency=medium
+
+  * Invoke rollback operation in secure way (Fixes: VRVDR-52330)
+
+ -- Paul Carson <paul.carson@intl.att.com>  Fri, 07 Aug 2020 10:03:41 +0100
+
 vyatta-config-mgmt (0.57.4) unstable; urgency=medium
 
   [ Paul Carson ]
