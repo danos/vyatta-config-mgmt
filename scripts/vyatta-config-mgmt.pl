@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 #
-# Copyright (c) 2019-2020, AT&T Intellectual Property. All rights reserved.
+# Copyright (c) 2019-2021, AT&T Intellectual Property. All rights reserved.
 #
 # Copyright (c) 2014, 2017 Brocade Communications Systems, Inc.
 # All Rights Reserved.
@@ -19,6 +19,7 @@ use lib '/opt/vyatta/share/perl5/';
 use Vyatta::Config;
 use Vyatta::ConfigMgmt;
 use Vyatta::Utils;
+use Vyatta::RebootReason;
 use Sort::Versions;
 use Getopt::Long;
 use File::Basename;
@@ -636,6 +637,7 @@ if ( $action eq 'rollback' ) {
     my $login = getpwuid($<) || "unknown";
     syslog( "warning", "Rollback reboot requested by $login" );
     closelog();
+    log_reboot_reason( "Rollback reboot: Config rollback requested by $login" );
     exec("/sbin/reboot");
 }
 

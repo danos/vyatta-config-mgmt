@@ -21,6 +21,7 @@ Depends:
  libvyatta-config-perl,
  libvyatta-interface-perl,
  libvyatta-misc-perl,
+ libvyatta-reboot-reason-perl,
  logrotate,
  perl,
  python3,
