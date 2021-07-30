@@ -389,10 +389,16 @@ if ( $action eq 'commit-confirm' ) {
     print "commit will rollback to previous version in $minutes"
       . " minutes unless you enter 'confirm'\n";
 
-    # To get rollback triggered at whole minute intervals, we need to add
-    # a sleep in front of the command for the number of seconds into the
-    # current minute at which we queue the command.
-    my $sleep_time = substr `date +'%S'`, 0, 2;
+    # at only supports times on minute boundaries
+    # adjust timeout to ensure at least the required time is scheduled
+    # even if this means up to an extra 59 seconds is included.
+    # To acheive to-the-second scheduling of the rollback operation
+    # will require an alternative to 'at', or new infrastructure
+    # to allow scheduling the rollback to one second accuracy with
+    # ability to cancel the scheduled job.
+    my $current_seconds = substr `date +'%S'`, 0, 2;
+    my $mins = ($minutes * 60) + $current_seconds + 60;
+    $mins = int( $mins / 60 );
 
     # Always rollback to immediately preceding config version.
     $cmd = "/opt/vyatta/sbin/revert_to_previous_config.sh";
@@ -400,7 +406,7 @@ if ( $action eq 'commit-confirm' ) {
     # Need to run with correct permissions.  This is the same as we use
     # in configd.service to start configd, using 'lu'.
     my @lines =
-`echo "sleep $sleep_time && /opt/vyatta/sbin/lu -user configd \\"$cmd\\"" | at now + $minutes minutes 2>&1`;
+`echo "/opt/vyatta/sbin/lu -user configd \\"$cmd\\"" | at now + $mins minutes 2>&1`;
     my ( $err, $job, $time ) = parse_at_output(@lines);
     if ($err) {
         print "Error: unable to schedule rollback\n";
